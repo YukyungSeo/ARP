@@ -69,19 +69,18 @@ public class TCPLayer implements BaseLayer {
 	}
 	
 	public boolean Send(byte[] input, int length) {
-		//TCP Çì´õÀÇ destination port number¸¦ È®ÀÎÇÏ¿©, Application Layer·Î ±¸ºĞÇÏ¿© Àü´Ş
-		//±× ¿Ü member method´Â ±¸Çö°¡´É
+		//TCP í—¤ë”ì˜ destination port numberë¥¼ í™•ì¸í•˜ì—¬, Application Layerë¡œ êµ¬ë¶„í•˜ì—¬ ì „ë‹¬
+		//ê·¸ ì™¸ member methodëŠ” êµ¬í˜„ê°€ëŠ¥
 		if(m_sHeader.tcp_dport==m_sHeader.tcp_sport) {
-			// Dest_Port°¡ °°À¸¸é Àü´Ş O
+			// Dest_Portê°€ ê°™ìœ¼ë©´ ì „ë‹¬
 			byte[] bytes = ObjToByte(m_sHeader, input, length);
 			this.GetUnderLayer().Send(bytes, length + 20);
 		}
-		// Dest_Port°¡ ´Ù¸£¸é Àü´Ş X
+		// Dest_Portê°€ ë‹¤ë¥´ë©´ ì „ë‹¬ X
 		return false;
 	}
 	
 	private byte[] ObjToByte(_TCP_Header Header, byte[] input, int length) {
-		// TODO Auto-generated method stub
 		byte[] buf = new byte[28];
 
 		buf[0] = Header.TCP_dstaddr.addr[0];
