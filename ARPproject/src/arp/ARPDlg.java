@@ -54,9 +54,12 @@ public class ARPDlg extends JFrame implements BaseLayer {
 	public static void main(String[] args) {
 		m_LayerMgr.AddLayer(new NILayer("NI"));
 		m_LayerMgr.AddLayer(new EthernetLayer("Ethernet"));
+		m_LayerMgr.AddLayer(new ARPLayer("ARP"));
+		m_LayerMgr.AddLayer(new IPLayer("IP"));
+		m_LayerMgr.AddLayer(new TCPLayer("TCP"));
 		m_LayerMgr.AddLayer(new ARPDlg("GUI"));
 
-//		m_LayerMgr.ConnectLayers("");
+		m_LayerMgr.ConnectLayers(" NI ( *Ethernet ( *ARP +IP ( -ARP *TCP ( *GUI ) ) ) )");
 	}
 
 	public ARPDlg(String pName) {
