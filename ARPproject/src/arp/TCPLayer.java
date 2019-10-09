@@ -81,7 +81,6 @@ public class TCPLayer implements BaseLayer {
 	}
 	
 	private byte[] ObjToByte(_TCP_Header Header, byte[] input, int length) {
-		// TODO Auto-generated method stub
 		byte[] buf = new byte[28];
 
 		buf[0] = Header.TCP_dstaddr.addr[0];
