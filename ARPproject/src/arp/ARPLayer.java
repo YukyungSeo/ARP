@@ -1,6 +1,7 @@
 package arp;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutput;
@@ -13,7 +14,7 @@ public class ARPLayer implements BaseLayer {
 	public String pLayerName = null;
 	public BaseLayer p_UnderLayer = null;
 	public ArrayList<BaseLayer> p_aUpperLayer = new ArrayList<BaseLayer>();
-	public ArrayList<_CACHE> queue_arpcache;
+	public CircularArrayQueue<_ENTRY> queue_arpTable;
 
 	private class _ETHERNET_ADDR {
 		private byte[] addr = new byte[6];
@@ -38,21 +39,38 @@ public class ARPLayer implements BaseLayer {
 			this.addr[3] = (byte) 0x00;
 		}
 	}
-	
-	public class _CACHE{
-		
+
+	private class TimeThread extends Thread {
+		public void run() {
+			try {
+				Thread.sleep(10000); // 10분 후로 교체 해줘야함
+				System.out.println(queue_arpTable.deQueue());
+			} catch(InterruptedException e) {
+				System.out.println(e.getMessage()); //오류 출력(방법은 여러가지)
+			}
+		}
+	}
+
+	public class _ENTRY {
+		_INTERNET_ADDR inet_addr;
+		_ETHERNET_ADDR enet_addr;
+
+		public _ENTRY(_INTERNET_ADDR inet_addr, _ETHERNET_ADDR enet_addr) {
+			this.inet_addr = inet_addr;
+			this.enet_addr = enet_addr;
+		}
 	}
 
 	private class _ARP_Header {
-		byte[] hw_type;
-		byte[] proto_type;
-		byte length_inetaddr;
-		byte length_enetaddr;
-		byte[] opcode;
-		_ETHERNET_ADDR enet_srcaddr;
-		_INTERNET_ADDR inet_srcaddr;
-		_ETHERNET_ADDR enet_dstaddr;
-		_INTERNET_ADDR inet_dstaddr;
+		byte[] hw_type; // 알수 없음
+		byte[] proto_type; // 알수 없음
+		byte length_inetaddr; // ip 주소 길이
+		byte length_enetaddr; // mac 주소 길이
+		byte[] opcode; // arp message가 request 이면 1, reply 이면 2
+		_ETHERNET_ADDR enet_srcaddr; // 본인 mac 주소
+		_INTERNET_ADDR inet_srcaddr; // 본인 ip 주소
+		_ETHERNET_ADDR enet_dstaddr; // 상대방 mac 주소
+		_INTERNET_ADDR inet_dstaddr; // 상대방 ip 주소
 
 		public _ARP_Header() {
 			this.hw_type = new byte[2];
@@ -74,6 +92,26 @@ public class ARPLayer implements BaseLayer {
 		// TODO Auto-generated constructor stub
 		pLayerName = pName;
 		ResetHeader();
+		queue_arpTable = new CircularArrayQueue<_ENTRY>(10);
+	}
+	
+	public void SetInetDstAddress(byte[] input) {
+		for (int i = 0; i < 4; i++) {
+			m_sHeader.inet_dstaddr.addr[i] = input[i];
+		}
+	}
+	
+	public void SetInetSrcAddress(byte[] input) {
+		for (int i = 0; i < 4; i++) {
+			m_sHeader.inet_srcaddr.addr[i] = input[i];
+		}
+	}
+
+	public void SetEnetSrcAddress(byte[] input) {
+		// TODO Auto-generated method stub
+		for (int i = 0; i < 6; i++) {
+			m_sHeader.enet_srcaddr.addr[i] = input[i];
+		}
 	}
 
 	private void ResetHeader() {
@@ -97,13 +135,39 @@ public class ARPLayer implements BaseLayer {
 		}
 	}
 
-	public boolean Send(byte[] input, int length) {
-		byte[] bytes = this.ObjToByte(m_sHeader);
-		this.GetUnderLayer().Send(bytes, length + 28);
+	private boolean inQueue(byte[] input) {
+		// TODO Auto-generated method stub
+		// queue에 해당 mac 주소가 있는지 확인
+		byte[] buf = new byte[4];
+		// input에서 dst mac 주소 꺼냄
+		for (int i = 0; i < 4; i++) {
+			buf[i] = input[i];
+		}
+		// table에 존재하는지 확인
+		for (int i=0; i<this.queue_arpTable.size(); i++) {
+			_ENTRY entry = queue_arpTable.elementAt(i);
+			for (int j = 0; j < 4; j++) {
+				if (entry.inet_addr.addr[j] == buf[j])
+					return true;
+			}
+		}
 		return false;
 	}
 
-	private byte[] ObjToByte(_ARP_Header Header) {
+	public boolean Send(byte[] input, int length) {
+		if (inQueue(input) == false) {
+			byte[] bytes = this.ObjToByte(m_sHeader, input, length);
+			
+			//만약 여기에 ???? 도 넣는다면... 잘못된 ip여서 답장이 안오면 어떡하지..?
+			
+			this.GetUnderLayer().Send(bytes, 28);
+			return true;
+		}
+		this.GetUnderLayer().Send(input, length);
+		return true;
+	}
+
+	private byte[] ObjToByte(_ARP_Header Header, byte[] input, int length) {
 		// TODO Auto-generated method stub
 		byte[] buf = new byte[28];
 
@@ -136,32 +200,38 @@ public class ARPLayer implements BaseLayer {
 		if (IsItMine(input) == false) {
 			return false;
 		}
-		
+
 		// 내 것이면
+		// 상대방의 enet과 inet 주소를 저장
+		for (int i = 0; i < 6; i++) {
+			m_sHeader.enet_dstaddr.addr[i] = input[8 + i];
+		}
+		for (int i = 0; i < 4; i++) {
+			m_sHeader.inet_dstaddr.addr[i] = input[14 + i];
+		}
+
 		if (IsItReply(input) == false) {
-			// 요청일 경우
-			// 설정 & 재전송
-			for (int i = 0; i < 6; i++) {
-				m_sHeader.enet_dstaddr.addr[i] = input[8+i];
-			}
-			for (int i = 0; i < 4; i++) {
-				m_sHeader.inet_dstaddr.addr[i] = input[14+i];
-			}
+			// 1. 답변일 경우
+			// cache table에 저장
+			_ENTRY newEntry = new _ENTRY(m_sHeader.inet_dstaddr, m_sHeader.enet_dstaddr);
+			this.queue_arpTable.enQueue(newEntry);
+			new TimeThread().start();
+
+			return true;
+		} else {
+			// 2. 요청일 경우
 			m_sHeader.opcode[0] = (byte) 0;
 			m_sHeader.opcode[1] = (byte) 2;
-			
+
+			// swapping & 재전송
 			return this.Send(input, 0);
 		}
-		
-		// 답변일 경우
-		// cache table에 저장
-		
-		return true;
+
 	}
 
 	private boolean IsItReply(byte[] input) {
 		// TODO Auto-generated method stub
-		if(m_sHeader.opcode[0] == (byte)0 && m_sHeader.opcode[0] == (byte)2) {
+		if (m_sHeader.opcode[0] == (byte) 0 && m_sHeader.opcode[0] == (byte) 2) {
 			return true;
 		}
 		return false;

@@ -1,4 +1,4 @@
-package chat_file;
+package arp;
 
 import java.util.ArrayList;
 
@@ -85,13 +85,13 @@ public class IPLayer implements BaseLayer {
 	}
 	
 	public void SetIPDstAddress(byte[] input) {
-		for (int i = 0; i < 3; i++) {
+		for (int i = 0; i < 4; i++) {
 			m_sHeader.IP_dstaddr.addr[i] = input[i];
 		}
 	}
 
 	public void SetIPSrcAddress(byte[] input) {
-		for (int i = 0; i < 3; i++) {
+		for (int i = 0; i < 4; i++) {
 			m_sHeader.IP_srcaddr.addr[i] = input[i];
 		}
 	}
@@ -104,10 +104,10 @@ public class IPLayer implements BaseLayer {
 		buf[2] = Header.IP_dstaddr.addr[2];
 		buf[3] = Header.IP_dstaddr.addr[3];
 
-		buf[4] = Header.IP_srcaddr.addr[4];
-		buf[5] = Header.IP_srcaddr.addr[5];
-		buf[6] = Header.IP_srcaddr.addr[6];
-		buf[7] = Header.IP_srcaddr.addr[7];
+		buf[4] = Header.IP_srcaddr.addr[0];
+		buf[5] = Header.IP_srcaddr.addr[1];
+		buf[6] = Header.IP_srcaddr.addr[2];
+		buf[7] = Header.IP_srcaddr.addr[3];
 		
 		buf[8] = Header.IP_len[0];
 		buf[9] = Header.IP_len[1];
@@ -174,12 +174,12 @@ public class IPLayer implements BaseLayer {
 		MyPacket = IsItMyPacket(input);
 
 		if (MyPacket == true){
-			//³»°¡ ¸¸µç ÆÐÅ¶ÀÌ¸é ¼ö½ÅÇÏÁö ¾ÊÀ½.
+			//ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Å¶ï¿½Ì¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½.
 			return false;
 		}else {
 				Mine = IsItMine(input);
 				if (Mine == false){
-					// ¸ñÀûÁö°¡ ÀÚ½ÅÀÌ ¾Æ´Ï¸é ¼ö½ÅÇÏÁö ¾ÊÀ½.
+					// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ú½ï¿½ï¿½ï¿½ ï¿½Æ´Ï¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½.
 					return false;
 				}
 			}
