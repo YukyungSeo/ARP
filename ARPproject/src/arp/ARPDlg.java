@@ -102,9 +102,11 @@ public class ARPDlg extends JFrame implements BaseLayer {
 		JButton bt_send = new JButton("Send");
 		bt_send.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
+				// target ip 주소 가져오기(gui에서 입력)
 				String tf_ipaddr = tf_ip_addrass.getText();
 				System.out.println(tf_ipaddr);
 				
+				// target ip 주소 setting : tcp, ip, arp
 				byte[] dstAddress = new byte[4];
 				String[] byte_dst = tf_ipaddr.split("\\.");
 				for (int i = 0; i < 4; i++) {
@@ -116,7 +118,10 @@ public class ARPDlg extends JFrame implements BaseLayer {
 				
 				
 				try {
+					// 본인 ip 주소 가져오기
 					String MyIPAddrass = InetAddress.getLocalHost().getHostAddress();
+					
+					// 본인 ip 주소 setting : tcp, ip, arp
 					byte[] srcAddress = new byte[4];
 					String[] byte_src = MyIPAddrass.split("\\.");
 					for (int i = 0; i < 4; i++) {
@@ -125,6 +130,12 @@ public class ARPDlg extends JFrame implements BaseLayer {
 					((TCPLayer) m_LayerMgr.GetLayer("TCP")).SetInetSrcAddress(srcAddress);
 					((IPLayer) m_LayerMgr.GetLayer("IP")).SetIPSrcAddress(srcAddress);
 					((ARPLayer) m_LayerMgr.GetLayer("ARP")).SetInetSrcAddress(srcAddress);
+					
+					// Ethernet Layer enet_type setting
+					byte[] enet_type = {(byte) 0x08, (byte) 0x06};
+					((EthernetLayer) m_LayerMgr.GetLayer("Ethernet")).SetEnetType(enet_type);
+					
+					// 전송
 					((TCPLayer) m_LayerMgr.GetLayer("TCP")).Send(new byte[0], 0);
 				} catch (UnknownHostException e) {
 					// TODO Auto-generated catch block

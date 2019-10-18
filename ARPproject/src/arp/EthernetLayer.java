@@ -62,6 +62,20 @@ public class EthernetLayer implements BaseLayer {
 		}
 	}
 
+	public void SetEnetDstAddress(byte[] input) {
+		// TODO Auto-generated method stub
+		for (int i = 0; i < 6; i++) {
+			m_sHeader.enet_dstaddr.addr[i] = input[i];
+		}
+	}
+
+	public void SetEnetType(byte[] input) {
+		// TODO Auto-generated method stub
+		for (int i = 0; i < 2; i++) {
+			m_sHeader.enet_type[i] = input[i];
+		}
+	}
+
 	public boolean Send(byte[] input, int length) {
 		// 상위 계층에서 받은 것을 하위 계층으로 보내는 것
 		byte[] bytes = ObjToByte(m_sHeader, input, length);

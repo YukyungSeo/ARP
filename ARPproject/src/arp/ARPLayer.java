@@ -45,8 +45,8 @@ public class ARPLayer implements BaseLayer {
 			try {
 				Thread.sleep(10000); // 10분 후로 교체 해줘야함
 				System.out.println(queue_arpTable.deQueue());
-			} catch(InterruptedException e) {
-				System.out.println(e.getMessage()); //오류 출력(방법은 여러가지)
+			} catch (InterruptedException e) {
+				System.out.println(e.getMessage()); // 오류 출력(방법은 여러가지)
 			}
 		}
 	}
@@ -62,8 +62,8 @@ public class ARPLayer implements BaseLayer {
 	}
 
 	private class _ARP_Header {
-		byte[] hw_type; // 알수 없음
-		byte[] proto_type; // 알수 없음
+		byte[] hw_type; // hw type
+		byte[] proto_type; // protocal type
 		byte length_inetaddr; // ip 주소 길이
 		byte length_enetaddr; // mac 주소 길이
 		byte[] opcode; // arp message가 request 이면 1, reply 이면 2
@@ -94,13 +94,13 @@ public class ARPLayer implements BaseLayer {
 		ResetHeader();
 		queue_arpTable = new CircularArrayQueue<_ENTRY>(10);
 	}
-	
+
 	public void SetInetDstAddress(byte[] input) {
 		for (int i = 0; i < 4; i++) {
 			m_sHeader.inet_dstaddr.addr[i] = input[i];
 		}
 	}
-	
+
 	public void SetInetSrcAddress(byte[] input) {
 		for (int i = 0; i < 4; i++) {
 			m_sHeader.inet_srcaddr.addr[i] = input[i];
@@ -111,6 +111,13 @@ public class ARPLayer implements BaseLayer {
 		// TODO Auto-generated method stub
 		for (int i = 0; i < 6; i++) {
 			m_sHeader.enet_srcaddr.addr[i] = input[i];
+		}
+	}
+
+	private void SetEnetDstAddress(byte[] input) {
+		// TODO Auto-generated method stub
+		for (int i = 0; i < 6; i++) {
+			m_sHeader.enet_dstaddr.addr[i] = input[i];
 		}
 	}
 
@@ -144,7 +151,7 @@ public class ARPLayer implements BaseLayer {
 			buf[i] = input[i];
 		}
 		// table에 존재하는지 확인
-		for (int i=0; i<this.queue_arpTable.size(); i++) {
+		for (int i = 0; i < this.queue_arpTable.size(); i++) {
 			_ENTRY entry = queue_arpTable.elementAt(i);
 			for (int j = 0; j < 4; j++) {
 				if (entry.inet_addr.addr[j] == buf[j])
@@ -156,10 +163,15 @@ public class ARPLayer implements BaseLayer {
 
 	public boolean Send(byte[] input, int length) {
 		if (inQueue(input) == false) {
+			// dst address 에 ff.ff.ff.ff 넣어주기
+			byte[] broadcast_dst_macAddress = {(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff,
+					(byte) 0xff };
+			((EthernetLayer) GetUnderLayer()).SetEnetDstAddress(broadcast_dst_macAddress);
+			this.SetEnetDstAddress(broadcast_dst_macAddress);
 			byte[] bytes = this.ObjToByte(m_sHeader, input, length);
-			
-			//만약 여기에 ???? 도 넣는다면... 잘못된 ip여서 답장이 안오면 어떡하지..?
-			
+
+			// 만약 여기에 ???? 도 넣는다면... 잘못된 ip여서 답장이 안오면 어떡하지..?
+
 			this.GetUnderLayer().Send(bytes, 28);
 			return true;
 		}
