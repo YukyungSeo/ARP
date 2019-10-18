@@ -80,7 +80,6 @@ public class EthernetLayer implements BaseLayer {
 		// 상위 계층에서 받은 것을 하위 계층으로 보내는 것
 		byte[] bytes = ObjToByte(m_sHeader, input, length);
 		this.GetUnderLayer().Send(bytes, length + 14);
-
 		return false;
 	}
 
@@ -154,20 +153,39 @@ public class EthernetLayer implements BaseLayer {
 	private boolean IsItMine(byte[] input) {
 		// TODO Auto-generated method stub
 		// 나에게 직접적으로 왔는가?
-		return false;
+		for (int i = 0; i < 6; i++) {
+			if (m_sHeader.enet_srcaddr.addr[i] == input[i])
+				continue;
+			else {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	private boolean IsItBroadcast(byte[] input) {
 		// TODO Auto-generated method stub
 		// 브로드케스팅인지 확인
 		// ARP에서 다발적으로 보낸 것인지 확인
-		return false;
+		for (int i = 0; i < 6; i++) {
+			if (input[i] == 0xff) {
+				continue;
+			} else
+				return false;
+		}
+		return true;
 	}
 
 	private boolean IsItMyPacket(byte[] input) {
 		// TODO Auto-generated method stub
 		// 이것이 내가 보낸 packet인가?
-		return false;
+		for (int i = 0; i < 6; i++) {
+			if (m_sHeader.enet_srcaddr.addr[i] == input[6 + i])
+				continue;
+			else
+				return false;
+		}
+		return true;
 	}
 
 	@Override

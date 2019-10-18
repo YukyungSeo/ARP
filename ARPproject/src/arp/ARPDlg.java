@@ -69,10 +69,27 @@ public class ARPDlg extends JFrame implements BaseLayer {
 		
 		// SRC IP & MAC ADDRESS SETTING
 		try {
-			InetAddress ip = InetAddress.getLocalHost();
-			NetworkInterface ni = NetworkInterface.getByInetAddress(ip);
+			// SRC IP ADDRESS SETTING
+			// src ip 주소 가져오기
+			InetAddress MyipAddress = InetAddress.getLocalHost();
+			
+			//src ip 주소 setting : tcp, ip, arp
+			byte[] srcAddress = new byte[4];
+			String[] byte_src = MyipAddress.getHostAddress().split("\\.");
+			for (int i = 0; i < 4; i++) {
+				srcAddress[i] = (byte) Integer.parseInt(byte_src[i], 16);
+			}
+			((TCPLayer) m_LayerMgr.GetLayer("TCP")).SetInetSrcAddress(srcAddress);
+			((IPLayer) m_LayerMgr.GetLayer("IP")).SetIPSrcAddress(srcAddress);
+			((ARPLayer) m_LayerMgr.GetLayer("ARP")).SetInetSrcAddress(srcAddress);
+			
+			// SRC MAC ADDRESS SETTING
+			// src mac 주소 가져오기
+			NetworkInterface ni = NetworkInterface.getByInetAddress(MyipAddress);
 			if (ni != null) {
 				byte[] src_macAddress = ni.getHardwareAddress();
+				
+				//src mac 주소 setting : ethernet, arp
 				((EthernetLayer) m_LayerMgr.GetLayer("Ethernet")).SetEnetSrcAddress(src_macAddress);
 				((ARPLayer) m_LayerMgr.GetLayer("ARP")).SetEnetSrcAddress(src_macAddress);
 			}
@@ -118,6 +135,7 @@ public class ARPDlg extends JFrame implements BaseLayer {
 				
 				
 				try {
+					// ip 주소가 바뀌었을지도 모르니 다시 setting
 					// 본인 ip 주소 가져오기
 					String MyIPAddrass = InetAddress.getLocalHost().getHostAddress();
 					

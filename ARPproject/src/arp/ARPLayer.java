@@ -236,14 +236,19 @@ public class ARPLayer implements BaseLayer {
 			m_sHeader.opcode[1] = (byte) 2;
 
 			// swapping & 재전송
-			return this.Send(input, 0);
+			// swapping을 하는 대신 새롭게 packet 만들어 전송
+			// 구현 측면에서 더 깔끔해서 그렇게 만들었다.
+			input = this.ObjToByte(m_sHeader, new byte[0], 0);
+			this.GetUnderLayer().Send(input, input.length);
+			
+			return true;
 		}
 
 	}
 
 	private boolean IsItReply(byte[] input) {
 		// TODO Auto-generated method stub
-		if (m_sHeader.opcode[0] == (byte) 0 && m_sHeader.opcode[0] == (byte) 2) {
+		if (m_sHeader.opcode[0] == (byte) 0 && m_sHeader.opcode[1] == (byte) 2) {
 			return true;
 		}
 		return false;
