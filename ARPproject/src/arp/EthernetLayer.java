@@ -51,28 +51,64 @@ public class EthernetLayer implements BaseLayer {
 		// super(pName);
 		// TODO Auto-generated constructor stub
 		pLayerName = pName;
-		
+
 	}
 
+	// getter & setter
+	public void SetEnetSrcAddress(byte[] input) {
+		// TODO Auto-generated method stub
+		for (int i = 0; i < 6; i++) {
+			m_sHeader.enet_srcaddr.addr[i] = input[i];
+		}
+	}
+
+	public void SetEnetDstAddress(byte[] input) {
+		// TODO Auto-generated method stub
+		for (int i = 0; i < 6; i++) {
+			m_sHeader.enet_dstaddr.addr[i] = input[i];
+		}
+	}
+
+	public void SetEnetType(byte[] input) {
+		// TODO Auto-generated method stub
+		for (int i = 0; i < 2; i++) {
+			m_sHeader.enet_type[i] = input[i];
+		}
+	}
 
 	public boolean Send(byte[] input, int length) {
 		// 상위 계층에서 받은 것을 하위 계층으로 보내는 것
 		byte[] bytes = ObjToByte(m_sHeader, input, length);
 		this.GetUnderLayer().Send(bytes, length + 14);
-		
 		return false;
 	}
 
-	
-
-	private byte[] ObjToByte(_ETHERNET_HEADER m_sHeader2, byte[] input, int length) {
+	private byte[] ObjToByte(_ETHERNET_HEADER m_sHeader, byte[] input, int length) {
 		// 상위 레이어에서 내려온 데이터에 EthernetLayer Header를 붙이는 함수
-		// byte buffer를 사용해서 만들어 보기
-		ByteBuffer buf = ByteBuffer.allocate(14 + length);
-		
-		return null;
-	}
+		byte[] buf = new byte[length + 14];
 
+		buf[0] = m_sHeader.enet_dstaddr.addr[0];
+		buf[1] = m_sHeader.enet_dstaddr.addr[1];
+		buf[2] = m_sHeader.enet_dstaddr.addr[2];
+		buf[3] = m_sHeader.enet_dstaddr.addr[3];
+		buf[4] = m_sHeader.enet_dstaddr.addr[4];
+		buf[5] = m_sHeader.enet_dstaddr.addr[5];
+
+		buf[6] = m_sHeader.enet_srcaddr.addr[0];
+		buf[7] = m_sHeader.enet_srcaddr.addr[1];
+		buf[8] = m_sHeader.enet_srcaddr.addr[2];
+		buf[9] = m_sHeader.enet_srcaddr.addr[3];
+		buf[10] = m_sHeader.enet_srcaddr.addr[4];
+		buf[11] = m_sHeader.enet_srcaddr.addr[5];
+
+		buf[12] = m_sHeader.enet_type[0];
+		buf[13] = m_sHeader.enet_type[1];
+
+		for (int i = 0; i < length; i++)
+			buf[14 + i] = input[i];
+
+		return buf;
+	}
 
 	public boolean Receive(byte[] input) {
 		// (어디선지는 모르지만)에서 받은 것을 상위 계층으로 보내는 것
@@ -80,32 +116,32 @@ public class EthernetLayer implements BaseLayer {
 		boolean MyPacket, Mine, Broadcast;
 		MyPacket = IsItMyPacket(input);
 
-		if (MyPacket == true){
+		if (MyPacket == true) {
 			// 내가 만든 패킷이면 수신하지 않음
 			return false;
-		}else {
+		} else {
 			Broadcast = IsItBroadcast(input);
 			if (Broadcast == false) {
 				// 브로드 케스팅도 아니면서,
 				Mine = IsItMine(input);
-				if (Mine == false){
+				if (Mine == false) {
 					// 목적지가 자신이 아니면 수신하지 않음.
 					return false;
 				}
 			}
 		}
-		
+
 		// application으로 보내는 것 == 상위 계층으로 보냄
 		// 0x0820 = ChatAppLayer;
 		// 0x0830 = FileAppLayer;
-		if(input[12] == 0x08 && input[13] == 0x20) {
+		if (input[12] == 0x08 && input[13] == 0x20) {
 			data = RemoveEtherHeader(input, input.length);
 			this.GetUpperLayer(0).Receive(data);
-		} else if(input[12] == 0x08 && input[13] == 0x30) {
+		} else if (input[12] == 0x08 && input[13] == 0x30) {
 			data = RemoveEtherHeader(input, input.length);
 			this.GetUpperLayer(1).Receive(data);
 		}
-			
+
 		return true;
 	}
 
@@ -114,28 +150,43 @@ public class EthernetLayer implements BaseLayer {
 		return null;
 	}
 
-
 	private boolean IsItMine(byte[] input) {
 		// TODO Auto-generated method stub
 		// 나에게 직접적으로 왔는가?
-		return false;
+		for (int i = 0; i < 6; i++) {
+			if (m_sHeader.enet_srcaddr.addr[i] == input[i])
+				continue;
+			else {
+				return false;
+			}
+		}
+		return true;
 	}
-
 
 	private boolean IsItBroadcast(byte[] input) {
 		// TODO Auto-generated method stub
 		// 브로드케스팅인지 확인
 		// ARP에서 다발적으로 보낸 것인지 확인
-		return false;
+		for (int i = 0; i < 6; i++) {
+			if (input[i] == 0xff) {
+				continue;
+			} else
+				return false;
+		}
+		return true;
 	}
-
 
 	private boolean IsItMyPacket(byte[] input) {
 		// TODO Auto-generated method stub
 		// 이것이 내가 보낸 packet인가?
-		return false;
+		for (int i = 0; i < 6; i++) {
+			if (m_sHeader.enet_srcaddr.addr[i] == input[6 + i])
+				continue;
+			else
+				return false;
+		}
+		return true;
 	}
-
 
 	@Override
 	public void SetUnderLayer(BaseLayer pUnderLayer) {

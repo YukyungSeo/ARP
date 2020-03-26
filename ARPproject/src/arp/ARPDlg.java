@@ -1,17 +1,18 @@
 package arp;
 
-import java.awt.Container;
+import java.awt.BorderLayout;
 import java.awt.FileDialog;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.List;
 
-import javax.sound.sampled.AudioFormat.Encoding;
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 
 import org.jnetpcap.Pcap;
 import org.jnetpcap.PcapIf;
@@ -31,7 +32,7 @@ public class ARPDlg extends JFrame implements BaseLayer {
 	private JTextField ChattingWrite;
 	private JTextField FileDir_path;
 
-	Container contentPane;
+	JComponent contentPane;
 
 	JTextArea ChattingArea;
 	JTextArea srcMacAddress;
@@ -50,8 +51,9 @@ public class ARPDlg extends JFrame implements BaseLayer {
 	JComboBox comboBox;
 
 	FileDialog fd;
+	private JTextField tf_ip_addrass;
 
-	public static void main(String[] args) {
+	public static void main(String[] args){
 		m_LayerMgr.AddLayer(new NILayer("NI"));
 		m_LayerMgr.AddLayer(new EthernetLayer("Ethernet"));
 		m_LayerMgr.AddLayer(new ARPLayer("ARP"));
@@ -62,214 +64,111 @@ public class ARPDlg extends JFrame implements BaseLayer {
 		m_LayerMgr.ConnectLayers(" NI ( *Ethernet ( *ARP +IP ( -ARP *TCP ( *GUI ) ) ) )");
 	}
 
-	public ARPDlg(String pName) {
+	public ARPDlg(String pName){
+		pLayerName = pName;
 		
-		pLayerName = pName;       
-		setTitle("Chatting & File Transfer");
-
-		setBounds(250, 250, 580, 400);
+		// SRC IP & MAC ADDRESS SETTING
+		try {
+			// SRC IP ADDRESS SETTING
+			// src ip 주소 가져오기
+			InetAddress MyipAddress = InetAddress.getLocalHost();
+			
+			//src ip 주소 setting : tcp, ip, arp
+			byte[] srcAddress = new byte[4];
+			String[] byte_src = MyipAddress.getHostAddress().split("\\.");
+			for (int i = 0; i < 4; i++) {
+				srcAddress[i] = (byte) Integer.parseInt(byte_src[i], 16);
+			}
+			((TCPLayer) m_LayerMgr.GetLayer("TCP")).SetInetSrcAddress(srcAddress);
+			((IPLayer) m_LayerMgr.GetLayer("IP")).SetIPSrcAddress(srcAddress);
+			((ARPLayer) m_LayerMgr.GetLayer("ARP")).SetInetSrcAddress(srcAddress);
+			
+			// SRC MAC ADDRESS SETTING
+			// src mac 주소 가져오기
+			NetworkInterface ni = NetworkInterface.getByInetAddress(MyipAddress);
+			if (ni != null) {
+				byte[] src_macAddress = ni.getHardwareAddress();
+				
+				//src mac 주소 setting : ethernet, arp
+				((EthernetLayer) m_LayerMgr.GetLayer("Ethernet")).SetEnetSrcAddress(src_macAddress);
+				((ARPLayer) m_LayerMgr.GetLayer("ARP")).SetEnetSrcAddress(src_macAddress);
+			}
+		} catch (UnknownHostException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (SocketException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-		contentPane = this.getContentPane();
-		JPanel pane = new JPanel();
-
-		pane.setLayout(null);
-		contentPane.add(pane);
-
-		ChattingArea = new JTextArea();
-		ChattingArea.setEditable(false);
-		ChattingArea.setBounds(12, 13, 359, 226);
-		pane.add(ChattingArea);// 채팅
-
-		srcMacAddress = new JTextArea();
-		srcMacAddress.setEditable(false);
-		srcMacAddress.setBounds(383, 123, 170, 24);
-		pane.add(srcMacAddress);// 보내는 주소
-
-		dstMacAddress = new JTextArea();
-		dstMacAddress.setBounds(383, 182, 170, 24);
-		pane.add(dstMacAddress);// 받는 사람 주소
-
-		ChattingWrite = new JTextField();
-		ChattingWrite.setBounds(12, 249, 359, 20);// 249
-		pane.add(ChattingWrite);
-		ChattingWrite.setColumns(10);// 채팅 쓰는 곳
-
-		FileDir_path = new JTextField();
-		FileDir_path.setEditable(false);
-		FileDir_path.setBounds(12, 280, 532, 20); // 280
-		pane.add(FileDir_path);
-		FileDir_path.setColumns(10);// file 경로
-
-		lblSelectNic = new JLabel("NIC List");
-		lblSelectNic.setBounds(383, 13, 170, 20);
-		pane.add(lblSelectNic);// 글자
-
-		lblsrc = new JLabel("Source Mac Address");
-		lblsrc.setBounds(383, 98, 170, 20);
-		pane.add(lblsrc);
-
-		lbldst = new JLabel("Destination Mac Address");
-		lbldst.setBounds(383, 157, 170, 20);
-		pane.add(lbldst);
-
-		Setting_Button = new JButton("Setting");// setting
-		Setting_Button.addActionListener(new ActionListener() {
+		setBounds(100, 100, 450, 300);
+		contentPane = new JPanel();
+		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
+		contentPane.setLayout(new BorderLayout(0, 0));
+		setContentPane(contentPane);
+		
+		JLabel label_IP_Addrass = new JLabel("IP주소");
+		contentPane.add(label_IP_Addrass, BorderLayout.WEST);
+		
+		tf_ip_addrass = new JTextField();
+		contentPane.add(tf_ip_addrass, BorderLayout.CENTER);
+		tf_ip_addrass.setColumns(10);
+		
+		JButton bt_send = new JButton("Send");
+		bt_send.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-
-				if (Setting_Button.getText() == "Reset") {
-					srcMacAddress.setText("");
-					dstMacAddress.setText("");
-					Setting_Button.setText("Setting");
-					dstMacAddress.setEditable(true);
-				} else {
-					byte[] srcAddress = new byte[6];
-					byte[] dstAddress = new byte[6];
-
-					String src = srcMacAddress.getText();
-					String dst = dstMacAddress.getText();
-
-					String[] byte_src = src.split("-");
-					for (int i = 0; i < 6; i++) {
+				// target ip 주소 가져오기(gui에서 입력)
+				String tf_ipaddr = tf_ip_addrass.getText();
+				System.out.println(tf_ipaddr);
+				
+				// target ip 주소 setting : tcp, ip, arp
+				byte[] dstAddress = new byte[4];
+				String[] byte_dst = tf_ipaddr.split("\\.");
+				for (int i = 0; i < 4; i++) {
+					dstAddress[i] = (byte) Integer.parseInt(byte_dst[i], 16);
+				}
+				((TCPLayer) m_LayerMgr.GetLayer("TCP")).SetInetDstAddress(dstAddress);
+				((IPLayer) m_LayerMgr.GetLayer("IP")).SetIPDstAddress(dstAddress);
+				((ARPLayer) m_LayerMgr.GetLayer("ARP")).SetInetDstAddress(dstAddress);
+				
+				
+				try {
+					// ip 주소가 바뀌었을지도 모르니 다시 setting
+					// 본인 ip 주소 가져오기
+					String MyIPAddrass = InetAddress.getLocalHost().getHostAddress();
+					
+					// 본인 ip 주소 setting : tcp, ip, arp
+					byte[] srcAddress = new byte[4];
+					String[] byte_src = MyIPAddrass.split("\\.");
+					for (int i = 0; i < 4; i++) {
 						srcAddress[i] = (byte) Integer.parseInt(byte_src[i], 16);
 					}
-
-					String[] byte_dst = dst.split("-");
-					for (int i = 0; i < 6; i++) {
-						dstAddress[i] = (byte) Integer.parseInt(byte_dst[i], 16);
-					}
-
-//					((EthernetLayer) m_LayerMgr.GetLayer("Ethernet")).SetEnetSrcAddress(srcAddress);
-//					((EthernetLayer) m_LayerMgr.GetLayer("Ethernet")).SetEnetDstAddress(dstAddress);
-
-					((NILayer) m_LayerMgr.GetLayer("NI")).SetAdapterNumber(selected_index);
-
-					Setting_Button.setText("Reset");
-					dstMacAddress.setEditable(false);
-				}
-
-			}
-		});
-		Setting_Button.setBounds(418, 218, 87, 20);
-		pane.add(Setting_Button);// setting
-
-		File_select_Button = new JButton("File select");// 파일 선택
-		File_select_Button.addActionListener(new ActionListener() {
-
-			public void actionPerformed(ActionEvent arg0) {
-				if (Setting_Button.getText() == "Reset") {
-
-					fd = new FileDialog(ARPDlg.this, "파일선택", FileDialog.LOAD);
-					fd.setVisible(true);
-
-					if (fd.getFile() != null) {
-						path = fd.getDirectory() + fd.getFile();
-						FileDir_path.setText("" + path);
-					}
-				} else {
-					JOptionPane.showMessageDialog(null, "주소 설정 오류", "WARNING_MESSAGE", JOptionPane.WARNING_MESSAGE);
-				}
-			}
-		});
-		File_select_Button.setBounds(75, 311, 161, 21);// 파일 선택위치 280
-		pane.add(File_select_Button);
-
-		Chat_send_Button = new JButton("Send");
-		Chat_send_Button.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				if (Setting_Button.getText() == "Reset") {
-					String input = ChattingWrite.getText();
-
-					ChattingArea.append("[SEND] : " + input + "\n");
-
-					byte[] type = new byte[2];
-					type[0] = 0x08;
-					type[1] = 0x20;
-					//((EthernetLayer) m_LayerMgr.GetLayer("Ethernet")).SetEnetType(type);
-
-					byte[] bytes = input.getBytes();
-					m_LayerMgr.GetLayer("Chat").Send(bytes, bytes.length);
-					// p_UnderLayer.Send(bytes, bytes.length);
-				} else {
-					JOptionPane.showMessageDialog(null, "주소 설정 오류");
-				}
-			}
-		});
-		Chat_send_Button.setBounds(383, 249, 161, 21);
-		pane.add(Chat_send_Button);
-
-		NIC_select_Button = new JButton("Select");
-		NIC_select_Button.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				String selected = comboBox.getSelectedItem().toString();
-				selected_index = comboBox.getSelectedIndex();
-				srcMacAddress.setText("");
-				try {
-					byte[] MacAddress = ((NILayer) m_LayerMgr.GetLayer("NI")).GetAdapterObject(selected_index)
-							.getHardwareAddress();
-					String hexNumber;
-					for (int i = 0; i < 6; i++) {
-						hexNumber = Integer.toHexString(0xff & MacAddress[i]);
-						srcMacAddress.append(hexNumber.toUpperCase());
-						if (i != 5)
-							srcMacAddress.append("-");
-					}
-				} catch (IOException e) {
+					((TCPLayer) m_LayerMgr.GetLayer("TCP")).SetInetSrcAddress(srcAddress);
+					((IPLayer) m_LayerMgr.GetLayer("IP")).SetIPSrcAddress(srcAddress);
+					((ARPLayer) m_LayerMgr.GetLayer("ARP")).SetInetSrcAddress(srcAddress);
+					
+					// Ethernet Layer enet_type setting
+					byte[] enet_type = {(byte) 0x08, (byte) 0x06};
+					((EthernetLayer) m_LayerMgr.GetLayer("Ethernet")).SetEnetType(enet_type);
+					
+					// 전송
+					((TCPLayer) m_LayerMgr.GetLayer("TCP")).Send(new byte[0], 0);
+				} catch (UnknownHostException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 			}
 		});
-
-		NIC_select_Button.setBounds(418, 69, 87, 23);
-		pane.add(NIC_select_Button);
-
-		File_send_Button = new JButton("File Send");
-		File_send_Button.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				if (Setting_Button.getText() == "Reset") {
-					byte[] type = new byte[2];
-					type[0] = 0x08;
-					type[1] = 0x30;
-//					((EthernetLayer) m_LayerMgr.GetLayer("Ethernet")).SetEnetType(type);
-
-					String filepath = FileDir_path.getText();
-					System.out.println(filepath);
-					m_LayerMgr.GetLayer("File").Send(filepath);
-					// p_UnderLayer.Send(filename);
-				}
-
-				else {
-					JOptionPane.showMessageDialog(null, "주소 설정 오류");
-				}
-			}
-		});
-		File_send_Button.setBounds(322, 311, 161, 23);
-		pane.add(File_send_Button);
-
-		comboBox = new JComboBox();
-
-		comboBox.setBounds(380, 38, 170, 24);
-		pane.add(comboBox);
-
+		contentPane.add(bt_send, BorderLayout.EAST);
+		
+		tf_ip_addrass = new JTextField();
+		contentPane.add(tf_ip_addrass, BorderLayout.CENTER);
+		tf_ip_addrass.setColumns(10);
+		
 		setVisible(true);
-
-		SetCombobox();
-	}
-
-	private void SetCombobox() {
-		List<PcapIf> m_pAdapterList = new ArrayList<PcapIf>();
-		StringBuilder errbuf = new StringBuilder();
-
-		int r = Pcap.findAllDevs(m_pAdapterList, errbuf);
-		if (r == Pcap.NOT_OK || m_pAdapterList.isEmpty()) {
-			System.err.printf("Can't read list of devices, error is %s", errbuf.toString());
-			return;
-		}
-		for (int i = 0; i < m_pAdapterList.size(); i++)
-			this.comboBox.addItem(m_pAdapterList.get(i).getDescription());
-	}
-	
+	}	
 	
 	public boolean Receive(byte[] input) {
 		byte[] data = input;
